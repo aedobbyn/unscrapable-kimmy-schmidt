@@ -92,26 +92,6 @@ start_session <- function(url, browser = "chrome", port = 4444L, version) {
 }
 ```
 
-```{r}
-close_session <- function(
-  server_name = ".deck_headless",
-  server_environment = .GlobalEnv) {
-  if (!exists(server_name, envir = server_environment)) {
-    return(invisible())
-  }
-
-  server_environment[[server_name]]$stop()
-
-  if (!sys.is_osx()) {
-    display_pids <- sys.cmd("pgrep -f Xvfb") %>% .[. %in% sys.cmd("pgrep -f Xvfb")]
-    if (length(display_pids) >= 1) for (pid in display_pids) sys.cmd(paste("kill -9", pid))
-  }
-
-  rm(list = server_name, envir = server_environment)
-}
-```
-
-
 
 ```{r}
 url <- "https://en.wikipedia.org/wiki/Special:Random"
@@ -167,15 +147,26 @@ link_tbl <-
 ```
 
 ```{r}
-link_tbl %>% 
+random_link_tbl <- 
+  link_tbl %>% 
   filter(
     str_detect(
       link, "^/wiki"
-    )
+    ) &
+      ! str_detect(link, ":")
   ) %>% 
-  sample_n(1) %>% 
-  pull(link)
+  sample_n(1)
+
+new_link <- glue::glue("https://en.wikipedia.org{random_link_tbl$link}")
 ```
+
+```{r}
+message(glue::glue("Going to {new_link}!"))
+
+sess %>% 
+  seleniumPipes::go(new_link)
+```
+
 
 # seleniumPipes has lots of useful functions like `back`, `refresh`, `getCurrentUrl`
 
@@ -187,6 +178,39 @@ sess %>%
     file = glue::glue("{here::here()}/screenshot.png")
   )
 ```
+
+
+What if we wanted to enter text?
+
+```{r}
+input_text <- function(sess, id_type, unique_id, text, clear = TRUE) {
+  element <- seleniumPipes::findElement(sess, id_type, unique_id)
+  
+  if (clear) seleniumPipes::elementClear(element)
+  
+  seleniumPipes::elementSendKeys(element, text)
+}
+```
+
+We first need to find the element on the page. Then we can enter text with `seleniumPipes::elementSendKeys`.
+
+```{r}
+text_search_name <- "search"
+
+sess %>% 
+  input_text(
+    id_type = "name",
+    unique_id = text_search_name,
+    text = "Amanda Bynes"
+  )
+
+element <- 
+  seleniumPipes::findElement(sess, id_type = "name", unique_id = text_search_name)
+
+element %>% seleniumPipes::elementSendKeys(key = "enter")
+```
+
+
 
 
 
