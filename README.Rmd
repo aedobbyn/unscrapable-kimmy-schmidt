@@ -7,3 +7,168 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Who am I
+
+# What is web scraping?
+
+# Tooling
+
+### rvest
+
+### Selenium
+
+### SelectorGadget
+
+# Politeness
+
+# Versions
+
+In a terminal:
+```
+brew cask install chromedriver
+chromedriver --version
+```
+
+```{r}
+wdman:::chrome_check(verbose = TRUE)
+```
+
+```{r}
+chromedriver_versions <- binman::list_versions(appname = "chromedriver") %>% 
+  .[[1]]
+```
+
+### Check which version of Chrome you have
+
+`system` is a way to use the terminal through R. (You can replace this with whatever the path to Chrome is on your computer.)
+
+```{r}
+cmd <- "/Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --version"
+```
+
+
+```{r}
+chrome_version <- system(cmd, intern = TRUE) %>% 
+  str_extract("[0-9\\.]+") %>% 
+  str_sub(1L, 9L)
+```
+
+# Use the chromedriver version that matches your Chrome version
+```{r}
+version <- chromedriver_versions[which(
+  str_detect(chromedriver_versions, chrome_version)
+  )]
+```
+
+
+
+# Example
+
+A random Wikipedia page
+
+```{r}
+next_class <- "btn btn-block btn-primary nav-forward"
+```
+
+```{r}
+start_session <- function(url, browser = "chrome", port = 4444L, version) {
+  if (port == 4444L) {
+    while (any(!is.na(pingr::ping_port("localhost", port)))) {
+      port <- port + 1
+    }
+  }
+  
+  wdman::chrome(
+        port = as.integer(port),
+        version = version,
+        check = FALSE
+      )
+  
+  seleniumPipes::remoteDr(browserName = "chrome", port = port, version = version) %>%
+    seleniumPipes::go(url)
+}
+```
+
+
+```{r}
+library(tidyverse)
+library(rvest)
+library(foodpls)
+
+url <- "http://wikiroulette.co/"
+
+driver <- seleniumPipes::remoteDr(browserName = "chrome")
+
+sess <- start_session(url, version = version)
+
+(xml <- 
+  url %>% 
+  xml2::read_html()
+)
+```
+
+xml by itself is not very useful to us
+
+```{r}
+str(xml)
+```
+
+This is where `rvest` comes in. 
+
+There are two types of nodes you can supply to `rvest::html_nodes`: CSS selectors and xpaths.
+
+```{r}
+?rvest::html_nodes
+```
+
+
+```{r}
+(
+  xml %>% 
+    rvest::html_nodes()
+)
+```
+
+
+
+
+```{r}
+url <- "https://fivethirtyeight.com/"
+```
+
+
+```{r}
+(xml <- 
+  url %>% 
+  xml2::read_html()
+)
+```
+
+```{r}
+(nodes <- xml %>% 
+  rvest::html_nodes("a")
+)
+```
+
+```{r}
+(text <- nodes %>% 
+  rvest::html_text())
+```
+```{r}
+clean_html <- function(x) {
+  x %>%
+    str_squish() %>%
+    str_remove_all("[\\n\\r\\t]")
+}
+```
+
+```{r}
+text[1:10]
+
+text[1:10] %>% 
+  clean_html()
+```
+
+
+
+
