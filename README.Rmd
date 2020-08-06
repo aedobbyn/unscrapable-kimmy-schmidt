@@ -67,7 +67,7 @@ version <- chromedriver_versions[which(
 A random Wikipedia page
 
 ```{r}
-next_class <- "btn btn-block btn-primary nav-forward"
+next_xpath <- "/html/body/div/div/div[2]/button[1]"
 ```
 
 ```{r}
@@ -78,16 +78,116 @@ start_session <- function(url, browser = "chrome", port = 4444L, version) {
     }
   }
   
+  # Start chrome driver
   wdman::chrome(
         port = as.integer(port),
         version = version,
         check = FALSE
       )
   
+  # Create the driver object on localhost
   seleniumPipes::remoteDr(browserName = "chrome", port = port, version = version) %>%
+    # Go to the url
     seleniumPipes::go(url)
 }
 ```
+
+```{r}
+close_session <- function(
+  server_name = ".deck_headless",
+  server_environment = .GlobalEnv) {
+  if (!exists(server_name, envir = server_environment)) {
+    return(invisible())
+  }
+
+  server_environment[[server_name]]$stop()
+
+  if (!sys.is_osx()) {
+    display_pids <- sys.cmd("pgrep -f Xvfb") %>% .[. %in% sys.cmd("pgrep -f Xvfb")]
+    if (length(display_pids) >= 1) for (pid in display_pids) sys.cmd(paste("kill -9", pid))
+  }
+
+  rm(list = server_name, envir = server_environment)
+}
+```
+
+
+
+```{r}
+url <- "https://en.wikipedia.org/wiki/Special:Random"
+
+sess <- start_session(url, version = version)
+```
+
+```{r}
+click <- function(sess, id_type, unique_id) {
+  seleniumPipes::findElement(sess, id_type, unique_id) %>%
+    seleniumPipes::elementClick()
+}
+```
+
+```{r}
+sess %>% 
+  seleniumPipes::go(url)
+```
+
+```{r}
+extract_html <- function(sess) {
+  sess %>%
+    seleniumPipes::getPageSource() %>%
+    as.character() %>%
+    xml2::read_html()
+}
+```
+
+What if now we wanted all the links on this page? `rvest::html_text` would give us the text of the links. `rvest::html_attr` will give us attributes about the thing we're scraping.
+
+```{r}
+links <- sess %>% 
+  extract_html() %>% 
+  rvest::html_nodes("a") %>% 
+  rvest::html_attr("href")
+```
+
+```{r}
+text <- 
+  sess %>% 
+  extract_html() %>% 
+  rvest::html_nodes("a") %>% 
+  rvest::html_text()
+```
+
+```{r}
+link_tbl <- 
+  tibble(
+    text = text,
+    link = links
+  ) %>% 
+  print(n = nrow(.))
+```
+
+```{r}
+link_tbl %>% 
+  filter(
+    str_detect(
+      link, "^/wiki"
+    )
+  ) %>% 
+  sample_n(1) %>% 
+  pull(link)
+```
+
+# seleniumPipes has lots of useful functions like `back`, `refresh`, `getCurrentUrl`
+
+# We can even take a screenshot
+
+```{r}
+sess %>% 
+  seleniumPipes::takeScreenshot(
+    file = glue::glue("{here::here()}/screenshot.png")
+  )
+```
+
 
 
 ```{r}
