@@ -57,11 +57,12 @@
 
 ## The Chrome DevTools Inspector
   # Either cmd + shift + I (ctrl on Windows) to pop open the inspector or right click on a particular part of the page
+    # Make sure you're in the Elements tab
   # To get the full xpath
     # Right click on the element -> Copy -> Copy full XPath
 
 ## SelectorGadget
-  # Great for geneating CSS selectors
+  # Great for generating CSS selectors
   # Anyone have a website they want to try this on?
 
 ### Politeness
@@ -82,25 +83,24 @@ conflicted::conflict_prefer("filter", "dplyr")
 
 url <- "https://fivethirtyeight.com/"
 
-(xml <- 
+(html <- 
     url %>% 
     xml2::read_html()
 )
 
-class(xml)
+class(html)
 
-# xml by itself is not very useful to us
-str(xml)
+# html by itself is not very useful to us
+str(html)
 
 # This is where `rvest` comes in. 
 
 # There are two types of nodes you can supply to `rvest::html_nodes`: CSS selectors and xpaths.
-?rvest::html_nodes
 
 # If we wanted to get all the links on this page, we would use the `a` tag which defines a hyperlink in HTML, e.g.
   # <a href="https://path_to_link.com/">display text</a>
-(nodes <- xml %>% 
-   rvest::html_nodes("a")
+(nodes <- html %>% 
+   rvest::html_nodes(css = "a")
 )
 
 class(nodes)
@@ -176,6 +176,12 @@ text <-
   rvest::html_nodes("a") %>% 
   rvest::html_text()
 
+# It's usually a good idea to make sure the lengths of these are the same
+identical(
+  length(links),
+  length(text)
+)
+
 link_tbl <- 
   tibble(
     text = text,
@@ -183,9 +189,11 @@ link_tbl <-
   ) 
 
 link_tbl %>% 
-  print(n = nrow(.))
+  print(n = 50)
 
 # Questions so far?
+
+## Anyone have a website the want to scrape using `rvest`?
 
 
 ### Selenium
@@ -194,7 +202,7 @@ link_tbl %>%
 
 # Selenium allows you to pretend to be a human by doing things like clicking buttons, entering text, selecting from dropdowns, refreshing the page, etc.
 
-# Its main use case is automating testing of web applciations, but it's super useful for scraping websites dynamically
+# Its main use case is automating testing of web applications, but it's super useful for scraping websites dynamically
 
 # It'll work on a variety of different browsers. Today we'll be using Google Chrome.
 
@@ -209,28 +217,26 @@ link_tbl %>%
 # seleniumPipes
   # This [package](https://github.com/johndharrison/seleniumPipes) provides functions for interacting with Selenium in a pipe-friendly way
 
-# # Versions
-# Versions can be a source of friction when it comes to using Selenium
+## Versions
+# Versions can be a source of friction when it comes to using Selenium 
+# We're going to want to explicitly supply a version of `chromedriver`, which will allow us to use Selenium in Chrome
+  # This version of `chromedriver` should match the version of the Chrome application on your system
+
 # We'll use the `wdman` and `binman` packages to download and manage binaries
 
+# [wdman](https://github.com/ropensci/wdman) is a web driver management package which includes support for Chrome
 
-# In a terminal:
-# ```
-# brew cask install chromedriver
-# chromedriver --version
-# ```
-
-# [wdman](https://github.com/ropensci/wdman) is a web driver management package
-
-# This internal [`chrome_check` function](https://github.com/ropensci/wdman/blob/a65c4dad1078b1c35cc844ff921ae21858d6923f/R/chrome.R#L90) will compare the Chrome version on your machine with the chromedriver version you have installed (if any), and make to install a version of chromedriver that matches your version of Chrome
+# This internal [`chrome_check` function](https://github.com/ropensci/wdman/blob/a65c4dad1078b1c35cc844ff921ae21858d6923f/R/chrome.R#L90) will compare the Chrome version on your machine with the chromedriver version you have installed (if any)
+  # If there isn't a match, it will install a version of `chromedriver` that matches your version of Chrome
 wdman:::chrome_check(verbose = TRUE)
 
-# Let's check which versions of chromedriver we have
+# Let's check which versions of `chromedriver` we have
 (chromedriver_versions <- binman::list_versions(appname = "chromedriver") %>% 
   .[[1]]
 )
 
-# You might have multiple versions of chromedriver installed. In this case, it's important to identify which one matches the version of Chrome you have
+# You might have multiple versions of `chromedriver` installed
+  # In this case, it's important to identify which one matches the version of Chrome you have
 
 # Let's check our version of Chrome
 
@@ -262,17 +268,24 @@ url <- "https://en.wikipedia.org/wiki/Special:Random"
   # We'll want to chose a port that is free (doesn't have a service running there) on our server
     # In this case our server is localhost (127.0.0.1), a.k.a. your computer is running as your server
   # For now we'll do the default to `wdman::chrome`
-port <- 4568L 
+port <- 4567L 
 
-# First we'll start the Chrome driver
-wdman::chrome(
-  port = port,
-  version = version,
-  check = FALSE # We already know what our version is
+# First we'll boot up the Chrome driver
+(server <- wdman::chrome(
+    port = port,
+    version = version,
+    check = FALSE # We already know what our version is
+  )
 )
+
+class(server)
+
+# We can stop this server with the function in `server[["stop"]]`
+server[["stop"]]
 
 # And create a session object 
 # You can supply an IP address as the first argument, `remoteServerAddr`, if you want to run this on a different machine; the default is localhost
+# You can use the `extraCapabilities` argument to set a local download directory if you want to download files
 sess <- 
   seleniumPipes::remoteDr(
     browserName = "chrome", 
@@ -288,49 +301,51 @@ class(sess)
 
 # We'll keep using the same session object to interact with this page; we don't want to redefine it 
 
+# We can check that this port is in use with the `pingr` package
+pingr::ping_port("localhost", port)
+
 # To consolidate these steps, I usually write convenience wrappers around `seleniumPipes` functions, like
 
-end_session <- function(server_name = "server",
-                        server_environment = .GlobalEnv) {
-  if (!exists(server_name, envir = server_environment)) {
+# It's a good idea to stop any sessions currently running
+end_session <- function() {
+  if (!exists("server")) {
     return(invisible())
   }
   
-  server_environment[[server_name]]$stop()
+  server$stop()
   
-  rm(list = server_name, envir = server_environment)
+  rm(server)
 }
+
+# This should free up our port
+end_session()
+# And `pingr::ping_port` should return all `NA`s
+pingr::ping_port("localhost", port)
 
 start_session <- function(url, browser = "chrome", port = 4444L, version) {
   # End any existing sessions
   end_session()
   
+  # Pick a port that isn't in use yet
   if (port == 4444L) {
     while (any(!is.na(pingr::ping_port("localhost", port)))) {
       port <- port + 1
     }
   }
   
-  # Start chrome driver
-  wdman::chrome(
-        port = as.integer(port),
-        version = version,
-        check = FALSE
-      )
+  # Start chrome driver and assign the server object in the .GlobalEnv
+  server <<- 
+    wdman::chrome(
+      port = as.integer(port),
+      version = version,
+      check = FALSE
+    )
   
   # Create the driver object on localhost
   seleniumPipes::remoteDr(
     browserName = "chrome", 
     port = port, 
-    version = version,
-    extraCapabilities = list(
-      chromeOptions = list(
-        args = list("--no-sandbox", "--disable-dev-shm-usage"),
-        prefs = list(
-          "profile.default_content_settings.popups" = 0L
-        )
-      )
-    )
+    version = version
   ) %>%
     # Go to the url
     seleniumPipes::go(url)
@@ -346,7 +361,10 @@ sess <- start_session(url, version = version)
 
 elem <- 
   sess %>% 
-  seleniumPipes::findElement(using = "class", value = "mw-wiki-logo")
+  seleniumPipes::findElement(
+    using = "class", 
+    value = "mw-wiki-logo"
+  )
 
 # Then we can click on the element
 elem %>% 
@@ -393,6 +411,7 @@ link_tbl <-
   ) 
 
 link_tbl %>% 
+  sample_n(30) %>% 
   print(n = nrow(.))
 
 # If we wanted to visit one of these links randomly, we could sample just suffix
@@ -401,8 +420,7 @@ random_link_tbl <-
   filter(
     str_detect(
       link, "^/wiki"
-    ) &
-      ! str_detect(link, ":")
+    )
   ) %>% 
   sample_n(1)
 
@@ -416,6 +434,10 @@ sess %>%
   seleniumPipes::go(new_link)
 
 # `seleniumPipes` has lots of useful functions like `back`, `refresh`, `getCurrentUrl`
+sess %>% 
+  seleniumPipes::back()
+sess %>% 
+  seleniumPipes::getCurrentUrl()
 
 # You can also execute JavaScript on the page with `executeScript`
 
@@ -436,6 +458,7 @@ sess %>%
 input_text <- function(sess, using, value, text, clear = TRUE) {
   element <- seleniumPipes::findElement(sess, using, value)
   
+  # Clear out text if it's in there
   if (clear) seleniumPipes::elementClear(element)
   
   seleniumPipes::elementSendKeys(element, text)
@@ -452,7 +475,7 @@ sess %>%
   input_text(
     using = "name",
     value = text_search_name,
-    text = "Hadley Wickham"
+    text = "Jenny Bryan"
   )
 
 # And hit enter by simulating pressing the enter key
@@ -548,7 +571,13 @@ sess %>%
 sess %>% 
   click("class", "eodSelect")
 
+# Now we can scrap the meat of this page
+sess %>% 
+  extract_html() %>% 
+  rvest::html_nodes(".col-xs-12.col-sm-3") %>% 
+  rvest::html_text() %>% 
+  clean_html()
 
-### Anyone have a website they want to scrape?
 
-### Any q's?
+### Anyone have a website they want to scrape using Selenium?
+
