@@ -1,20 +1,72 @@
 ###### Web scraping with rvest and Selenium! ###### 
 
 ### Intro
-# I'm a data engineer at a small progressive company called [Deck](https://www.deck.tools/)
-# I use web scraping tools primarily to scrape state campaign finance law data that isn't available from other sources
+
+## Things I am:
+  # I'm a data engineer at a small progressive company called [Deck](https://www.deck.tools/)
+    # I use web scraping tools primarily to scrape state campaign finance law data that isn't available from other sources
+
+## Things I am not:
+# A web developer
+  # But I will do my best to answer any web questions and/or Google them in tandem with you!
 
 ## Some of my links:
 # https://github.com/aedobbyn
 # https://dobb.ae/
+# @dobbleobble on Twitter
+
+## I'll be trying to keep this workshop:
+  # Interactive
+    # If you have a question or something's not working for you, feel free to say so out loud or in the chat
+  # Practical
+    # There's plenty of theory and weeds to get into here but I'll try to keep it applicable to things you'd want to do in R
+
 
 ### What is web scraping?
-# 
-# # Tooling
-# 
-# ### rvest
 
-# `rvest` is a tidyverse-adjacent package for static web scraping
+# The goal of web scraping is to extract text, tables, urls, and other attributes from a website
+  # This can be useful when we can't access the data source behind a given public website
+
+# We can use the code underlying a website to pull out only certain parts of the page we're interested in
+
+
+### Bit of HTML and CSS background
+
+# HTML (hypertext markup language) defines how the elements of a website are laid out 
+  # It creates headers, paragraphs, tables, bullet points, etc.
+# CSS adds style
+  # Size, color, font
+# JavaScript adds interactivity
+  # What happens when you click a button, how a chart updates when you enter new data, etc.
+
+# These components of a website allow us to comb through and extract things based on those HTML tags, CSS classes and ids
+
+# What do HTML tags, CSS classes and CSS IDs look like?
+  # Check out `sample.html`
+
+# Besides these, we can use:
+
+# CSS selectors
+  # A combination of different CSS classes and/or IDs that identify some elements on a page
+
+# Full xpaths
+  # An indication from the DOM to tell you exactly where an element is in the HTML
+
+
+### Tooling
+
+## The Chrome DevTools Inspector
+  # Either cmd + shift + I (ctrl on Windows) to pop open the inspector or right click on a particular part of the page
+  # To get the full xpath
+    # Right click on the element -> Copy -> Copy full XPath
+
+## SelectorGadget
+  # Great for geneating CSS selectors
+  # Anyone have a website they want to try this on?
+
+### rvest
+
+# `rvest` is a tidyverse-adjacent package for web scraping
 library(tidyverse)
 library(rvest)
 conflicted::conflict_prefer("filter", "dplyr")
@@ -37,18 +89,10 @@ str(xml)
 # There are two types of nodes you can supply to `rvest::html_nodes`: CSS selectors and xpaths.
 ?rvest::html_nodes
 
-# CSS selectors use the styling of the web page (CSS classes and ids) to identify certain nodes in a document
-
-# An xpath is a way to specify a particular node from an xml document
-# They use the DOM to tell you exactly where an element is in the HTML
-
-# You can access both of these using the Chrome inspector
-# Either cmd + shift + I (ctrl on Windows) to pop open the inspector or right click on a particular part of the page
-
 # If we wanted to get all the links on this page, we would use the `a` tag which defines a hyperlink in HTML, e.g.
-# <a href="https://path_to_link.com/" name="class_name", id="id_name">display text</a>
+  # <a href="https://path_to_link.com/" name="class_name", id="id_name">display text</a>
 (nodes <- xml %>% 
-    rvest::html_nodes("a")
+   rvest::html_nodes("a")
 )
 
 class(nodes)
@@ -56,10 +100,10 @@ class(nodes)
 # Or to get a specific link if we know its id, we could supply the id instead of simply `a` for all links
 
 # Once we've gotten our nodes, we want to extract stuff out of them that will be useful for us in R
-# The most common way to do this is with `rvest::html_text` which takes that `xml_nodeset` and returns a character vector 
+  # The most common way to do this is with `rvest::html_text` which takes that `xml_nodeset` and returns a character vector 
 
 (text <- nodes %>% 
-    rvest::html_text()
+   rvest::html_text()
 )
 
 # In this case, what is returned is the `display text` of the link
@@ -84,10 +128,10 @@ text[1:10] %>%
 url <- "https://en.wikipedia.org/wiki/R_(programming_language)"
 
 (tbls <- 
-    url %>% 
-    xml2::read_html() %>% 
-    rvest::html_nodes("table") %>% 
-    rvest::html_table(fill = TRUE)
+  url %>% 
+  xml2::read_html() %>% 
+  rvest::html_nodes("table") %>% 
+  rvest::html_table(fill = TRUE)
 )
 
 # You'll often need `fill = TRUE` and then need to extract which table you want from a list of tables
@@ -108,8 +152,8 @@ tbls %>%
   )
 
 # What if now we wanted all the links on this page? 
-# `rvest::html_text` would give us the text of the links
-# `rvest::html_attr` will give us attributes about the thing we're scraping
+  # `rvest::html_text` would give us the text of the links
+  # `rvest::html_attr` will give us attributes about the thing we're scraping
 
 links <- 
   url %>% 
@@ -139,7 +183,12 @@ link_tbl %>%
 # 
 # # Politeness
 
+# There are several packages which make it easy to be "polite"
+  # https://github.com/dmi3kno/polite
+
 # https://en.wikipedia.org/robots.txt
+
+# Another good idea is to put sleeps in any loops you're writing with `Sys.sleep`
 
 
 ### Selenium
@@ -150,15 +199,18 @@ link_tbl %>%
 
 # Its main use case is automating testing of web applciations, but it's super useful for scraping websites dynamically
 
-# If I can, I always try and just use `rvest` for scraping projects because it's a lot less finicky then using Selenium
-# Something I always do first when deciding whether I need Selenium is have a look at the url; there, you might be able to find a base url attached to ids or names you can loop through 
+# It'll work on a variety of different browsers. Today we'll be using Google Chrome.
+
+# A word of caution: Selenium introduces more complexity into scraping
+  # If I can, I always try and just use `rvest` for scraping projects because it's a lot less finicky
+  # Something I always do first when deciding whether I need Selenium is have a look at the url; there, you might be able to find a base url attached to ids or names you can loop through 
 
 ## Tools
 # RSelenium
-# This rOpenSci [package](https://github.com/ropensci/RSelenium) provides the R bindings to the language-agnostic Selenium 2.0 Remote WebDriver
+  # This rOpenSci [package](https://github.com/ropensci/RSelenium) provides the R bindings to the language-agnostic Selenium 2.0 Remote WebDriver
 
 # seleniumPipes
-# This [package](https://github.com/johndharrison/seleniumPipes) provides functions for interacting with Selenium in a pipe-friendly way
+  # This [package](https://github.com/johndharrison/seleniumPipes) provides functions for interacting with Selenium in a pipe-friendly way
 
 # # Versions
 # Versions can be a source of friction when it comes to using Selenium
@@ -177,7 +229,7 @@ wdman:::chrome_check(verbose = TRUE)
 
 # Let's check which versions of chromedriver we have
 (chromedriver_versions <- binman::list_versions(appname = "chromedriver") %>% 
-    .[[1]]
+  .[[1]]
 )
 
 # You might have multiple versions of chromedriver installed. In this case, it's important to identify which one matches the version of Chrome you have
@@ -190,15 +242,15 @@ wdman:::chrome_check(verbose = TRUE)
 cmd <- "/Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --version"
 
 (chrome_version <- system(cmd, intern = TRUE) %>% 
-    str_extract("[0-9\\.]+") %>% 
-    str_sub(1L, 9L)
+  str_extract("[0-9\\.]+") %>% 
+  str_sub(1L, 9L)
 )
 
 
 # Now we can use the chromedriver version that matches our Chrome version
 (version <- chromedriver_versions[which(
   str_detect(chromedriver_versions, chrome_version)
-)]
+  )]
 )
 
 ### Using Selenium
@@ -216,6 +268,7 @@ wdman::chrome(
 )
 
 # And create a session object 
+# You can supply an IP address as the first argument, `remoteServerAddr`, if you want to run this on a different machine; the default is localhost
 sess <- 
   seleniumPipes::remoteDr(
     browserName = "chrome", 
@@ -242,10 +295,10 @@ start_session <- function(url, browser = "chrome", port = 4444L, version) {
   
   # Start chrome driver
   wdman::chrome(
-    port = as.integer(port),
-    version = version,
-    check = FALSE
-  )
+        port = as.integer(port),
+        version = version,
+        check = FALSE
+      )
   
   # Create the driver object on localhost
   seleniumPipes::remoteDr(browserName = "chrome", port = port, version = version) %>%
@@ -257,21 +310,21 @@ start_session <- function(url, browser = "chrome", port = 4444L, version) {
 sess <- start_session(url, version = version)
 
 # To click on an element, we first need to identify it with `seleniumPipes::findElement` 
-# The things that identify an element are its `id_type` which can be one of
-# c("xpath", "css selector", "id", "name", "tag name", "class name", "link text", "partial link text")
-# and the `unique_id` pertaining to that `id_type`
+  # The things that identify an element are its ID type with the `using` argument which can be one of
+    # c("xpath", "css selector", "id", "name", "tag name", "class name", "link text", "partial link text")
+  # and the unique id or `value` pertaining to that ID type
 
 elem <- 
   sess %>% 
-  seleniumPipes::findElement("class", "mw-wiki-logo")
+  seleniumPipes::findElement(using = "class", value = "mw-wiki-logo")
 
 # Then we can click on the element
 elem %>% 
   seleniumPipes::elementClick()
 
 # Or, all in one go
-click <- function(sess, id_type, unique_id) {
-  seleniumPipes::findElement(sess, id_type, unique_id) %>%
+click <- function(sess, using, value) {
+  seleniumPipes::findElement(sess, using, value) %>%
     seleniumPipes::elementClick()
 }
 
@@ -348,8 +401,8 @@ sess %>%
 
 # Then we can use `seleniumPipes::elementSendKeys` to actually enter the text
 
-input_text <- function(sess, id_type, unique_id, text, clear = TRUE) {
-  element <- seleniumPipes::findElement(sess, id_type, unique_id)
+input_text <- function(sess, using, value, text, clear = TRUE) {
+  element <- seleniumPipes::findElement(sess, using, value)
   
   if (clear) seleniumPipes::elementClear(element)
   
@@ -365,16 +418,16 @@ text_search_name <- "search"
 # Now we can enter a search term
 sess %>% 
   input_text(
-    id_type = "name",
-    unique_id = text_search_name,
+    using = "name",
+    value = text_search_name,
     text = "Amanda Bynes"
   )
 
 # And hit enter by simulating pressing the enter key
 sess %>% 
   input_text(
-    id_type = "name",
-    unique_id = text_search_name,
+    using = "name",
+    value = text_search_name,
     text = "\uE007", # This is the UTF-8 code for "enter"
     clear = FALSE
   )
@@ -387,8 +440,8 @@ search_button_id <- "searchButton"
 
 sess %>% 
   click(
-    id_type = "id",
-    unique_id = search_button_id
+    using = "id",
+    value = search_button_id
   )
 
 # We can expand the search options with `click` again
@@ -396,8 +449,8 @@ expand_down_class <- "mw-advancedSearch-searchPreview"
 
 sess %>% 
   click(
-    id_type = "class",
-    unique_id = expand_down_class
+    using = "class",
+    value = expand_down_class
   )
 
 # Now we can fill all of these text boxes
@@ -411,8 +464,8 @@ input_some_text <- function(ids = text_ids) {
   for (i in seq_along(ids)) {
     sess %>% 
       input_text(
-        id_type = "id",
-        unique_id = ids[i],
+        using = "id",
+        value = ids[i],
         text = sample(letters, 1)
       )
     
@@ -435,13 +488,13 @@ sess <- start_session(url, version = version)
 
 # Dropdowns can be a little tricky. You want to grab the full xpath
 
-dropdown_select <- function(sess, unique_id, option_number) {
+dropdown_select <- function(sess, value, option_number) {
   xpath <-
     glue::glue("{unique_id}/option[{option_number}]")
   
   click(
     sess = sess,
-    id_type = "xpath",
-    unique_id = xpath
+    using = "xpath",
+    value = xpath
   )
 }

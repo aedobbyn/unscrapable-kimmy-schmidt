@@ -1,0 +1,64 @@
+<html>
+
+<head>
+<title>My title</title>
+
+<!-- This CSS will often be in its own .css stylesheet file -->
+<style>
+
+body {
+  background-color: yellow;
+  color: blue;
+  font-family: "Comic Sans MS"
+}
+
+h1 {
+  background-color: teal;
+  color: white;
+  font-family: "Comic Sans MS"
+}
+
+h1:hover   {
+	color: red;
+}
+
+/* 
+In a CSS file, classes start with "."s.
+They're good for times when you
+*/
+.orangeClass {
+  color: orange;
+}
+
+.bigClass {
+  font-size: 1.5em
+}
+
+/* And IDs begin with "#"s */
+#myId {
+  color: green;
+}
+
+</style>
+</head>
+
+<body>
+
+<br><br>
+
+<h1>This is a header</h1>
+
+<div> And here is some text <b>which can be <em>styled</em></b> by 
+
+<span class="orangeClass">
+CSS classes as well as <span id="myId"> by specific IDs. </span> 
+
+<p> Classes are good for applying the same style mutliple places. </p>
+</span>
+
+<span class="orangeClass bigClass"> These things can be combined as well. </span>
+
+</div>
+
+</body>
+</html>
