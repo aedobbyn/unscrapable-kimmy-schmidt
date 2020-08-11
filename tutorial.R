@@ -64,6 +64,15 @@
   # Great for geneating CSS selectors
   # Anyone have a website they want to try this on?
 
+### Politeness
+
+# There are several packages which make it easy to be "polite"
+# https://github.com/dmi3kno/polite
+
+# https://en.wikipedia.org/robots.txt
+
+# Another good idea is to put sleeps in any loops you're writing with `Sys.sleep`
+
 ### rvest
 
 # `rvest` is a tidyverse-adjacent package for web scraping
@@ -80,7 +89,6 @@ url <- "https://fivethirtyeight.com/"
 
 class(xml)
 
-
 # xml by itself is not very useful to us
 str(xml)
 
@@ -90,7 +98,7 @@ str(xml)
 ?rvest::html_nodes
 
 # If we wanted to get all the links on this page, we would use the `a` tag which defines a hyperlink in HTML, e.g.
-  # <a href="https://path_to_link.com/" name="class_name", id="id_name">display text</a>
+  # <a href="https://path_to_link.com/">display text</a>
 (nodes <- xml %>% 
    rvest::html_nodes("a")
 )
@@ -108,7 +116,7 @@ class(nodes)
 
 # In this case, what is returned is the `display text` of the link
 
-# Often write a helper like
+# I often write a helper like
 
 clean_html <- function(x) {
   x %>%
@@ -137,14 +145,15 @@ url <- "https://en.wikipedia.org/wiki/R_(programming_language)"
 # You'll often need `fill = TRUE` and then need to extract which table you want from a list of tables
 length(tbls)
 
-tbls %>% 
-  .[[2]]
+(tbl <- 
+    tbls %>% 
+    .[[2]] %>% 
+    as_tibble()
+)
 
 # And then usually do a bit of cleaning on the result
-tbls %>% 
-  .[[2]] %>% 
-  as_tibble() %>% 
-  mutate_all(stringr::str_squish) %>% 
+tbl %>% 
+  mutate_all(str_squish) %>% 
   transmute(
     release = Release,
     date = lubridate::as_date(Date),
@@ -178,18 +187,6 @@ link_tbl %>%
 
 # Questions so far?
 
-# 
-# ### SelectorGadget
-# 
-# # Politeness
-
-# There are several packages which make it easy to be "polite"
-  # https://github.com/dmi3kno/polite
-
-# https://en.wikipedia.org/robots.txt
-
-# Another good idea is to put sleeps in any loops you're writing with `Sys.sleep`
-
 
 ### Selenium
 
@@ -205,7 +202,7 @@ link_tbl %>%
   # If I can, I always try and just use `rvest` for scraping projects because it's a lot less finicky
   # Something I always do first when deciding whether I need Selenium is have a look at the url; there, you might be able to find a base url attached to ids or names you can loop through 
 
-## Tools
+## Packages
 # RSelenium
   # This rOpenSci [package](https://github.com/ropensci/RSelenium) provides the R bindings to the language-agnostic Selenium 2.0 Remote WebDriver
 
@@ -223,7 +220,8 @@ link_tbl %>%
 # chromedriver --version
 # ```
 
-# [wdman](https://github.com/ropensci/wdman) is a web driver managment package
+# [wdman](https://github.com/ropensci/wdman) is a web driver management package
+
 # This internal [`chrome_check` function](https://github.com/ropensci/wdman/blob/a65c4dad1078b1c35cc844ff921ae21858d6923f/R/chrome.R#L90) will compare the Chrome version on your machine with the chromedriver version you have installed (if any), and make to install a version of chromedriver that matches your version of Chrome
 wdman:::chrome_check(verbose = TRUE)
 
@@ -233,7 +231,6 @@ wdman:::chrome_check(verbose = TRUE)
 )
 
 # You might have multiple versions of chromedriver installed. In this case, it's important to identify which one matches the version of Chrome you have
-
 
 # Let's check our version of Chrome
 
@@ -246,11 +243,13 @@ cmd <- "/Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --versi
   str_sub(1L, 9L)
 )
 
-
 # Now we can use the chromedriver version that matches our Chrome version
-(version <- chromedriver_versions[which(
-  str_detect(chromedriver_versions, chrome_version)
-  )]
+(version <- 
+  chromedriver_versions[
+    which(
+      str_detect(chromedriver_versions, chrome_version)
+    )
+  ]
 )
 
 ### Using Selenium
@@ -258,7 +257,12 @@ cmd <- "/Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --versi
 # A random Wikipedia page
 url <- "https://en.wikipedia.org/wiki/Special:Random"
 
-port <- 4567L # The default to wdman::chrome
+# Ports
+  # Each IP address has multiple ports and uses these ports to communicate with other servers
+  # We'll want to chose a port that is free (doesn't have a service running there) on our server
+    # In this case our server is localhost (127.0.0.1), a.k.a. your computer is running as your server
+  # For now we'll do the default to `wdman::chrome`
+port <- 4568L 
 
 # First we'll start the Chrome driver
 wdman::chrome(
@@ -329,7 +333,7 @@ click <- function(sess, using, value) {
 }
 
 sess %>% 
-  click("class", "mw-wiki-logo")
+  click("tag name", "img")
 
 # You can do everything with Selenium that you could with `rvest`
 
@@ -387,6 +391,8 @@ sess %>%
 
 # `seleniumPipes` has lots of useful functions like `back`, `refresh`, `getCurrentUrl`
 
+# You can also execute JavaScript on the page with `executeScript`
+
 # We can even take a screenshot!
 sess %>% 
   seleniumPipes::takeScreenshot(
@@ -420,7 +426,7 @@ sess %>%
   input_text(
     using = "name",
     value = text_search_name,
-    text = "Amanda Bynes"
+    text = "Hadley Wickham"
   )
 
 # And hit enter by simulating pressing the enter key
@@ -455,7 +461,7 @@ sess %>%
 
 # Now we can fill all of these text boxes
 
-# Their class is all the same, so I'll use an id to identify which one I want to fill
+# Their class is all the same, so I'll use an ID to identify which one I want to fill
 
 (text_ids <- glue::glue("ooui-{seq(35, 41, by = 2)}"))
 
@@ -466,7 +472,7 @@ input_some_text <- function(ids = text_ids) {
       input_text(
         using = "id",
         value = ids[i],
-        text = sample(letters, 1)
+        text = sample(letters, 7) %>% str_c(collapse = "")
       )
     
     Sys.sleep(0.5)
@@ -476,21 +482,25 @@ input_some_text <- function(ids = text_ids) {
 input_some_text()
 
 
+## Dropdowns 
+# For these you'll want to use the full xpath and provide an `option` value
+# You can use the Chrome inspector to click on the dropdown to get the xpath you want
 
+url <- "https://www.usvotefoundation.org/vote/state-elections/state-election-dates-deadlines.htm"
+  
+dropdown_xpath <- "/html/body/div[2]/div[4]/div/div/section/div/div[2]/div/form/div/select"
 
+# The first option's xpath is
+first_option <- "/html/body/div[2]/div[4]/div/div/section/div/div[2]/div/form/div/select/option[1]"
 
-sess <- start_session(url, version = version)
+# You'll see it's just `dropdown_xpath` with `/option[1]` appended
+dropdown_xpath
+first_option
 
-
-
-
-
-
-# Dropdowns can be a little tricky. You want to grab the full xpath
+# I usually write a helper like this to append the `option` value onto the xpath of the `select` HTML tag
 
 dropdown_select <- function(sess, value, option_number) {
-  xpath <-
-    glue::glue("{unique_id}/option[{option_number}]")
+  xpath <- glue::glue("{value}/option[{option_number}]")
   
   click(
     sess = sess,
@@ -498,3 +508,20 @@ dropdown_select <- function(sess, value, option_number) {
     value = xpath
   )
 }
+
+sess <- start_session(url = url, version = version)
+
+# Using this helper, we can pick a random state from the dropdown
+sess %>% 
+  dropdown_select(
+    value = dropdown_xpath,
+    option_number = sample(1:56, 1) # Not 50 because of territories and DC
+  )
+  
+# And hit submit
+sess %>% 
+  click("class", "eodSelect")
+
+
+### Anyone have a website they want to scrape?
+
