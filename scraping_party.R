@@ -290,21 +290,7 @@ class(sess)
 
 # To consolidate these steps, I usually write convenience wrappers around `seleniumPipes` functions, like
 
-end_session <- function(server_name = "server",
-                        server_environment = .GlobalEnv) {
-  if (!exists(server_name, envir = server_environment)) {
-    return(invisible())
-  }
-  
-  server_environment[[server_name]]$stop()
-  
-  rm(list = server_name, envir = server_environment)
-}
-
 start_session <- function(url, browser = "chrome", port = 4444L, version) {
-  # End any existing sessions
-  end_session()
-  
   if (port == 4444L) {
     while (any(!is.na(pingr::ping_port("localhost", port)))) {
       port <- port + 1
@@ -319,19 +305,7 @@ start_session <- function(url, browser = "chrome", port = 4444L, version) {
       )
   
   # Create the driver object on localhost
-  seleniumPipes::remoteDr(
-    browserName = "chrome", 
-    port = port, 
-    version = version,
-    extraCapabilities = list(
-      chromeOptions = list(
-        args = list("--no-sandbox", "--disable-dev-shm-usage"),
-        prefs = list(
-          "profile.default_content_settings.popups" = 0L
-        )
-      )
-    )
-  ) %>%
+  seleniumPipes::remoteDr(browserName = "chrome", port = port, version = version) %>%
     # Go to the url
     seleniumPipes::go(url)
 }
@@ -551,4 +525,3 @@ sess %>%
 
 ### Anyone have a website they want to scrape?
 
-### Any q's?
