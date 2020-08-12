@@ -1,14 +1,16 @@
+###################################################
 ###### Web scraping with rvest and Selenium! ###### 
+###################################################
 
 ### Intro
 
 ## Things I am:
   # I'm a data engineer at a small progressive company called [Deck](https://www.deck.tools/)
-    # I use web scraping tools primarily to scrape state campaign finance law data that isn't available from other sources
+    # Among other data eng things, I use web scraping tools primarily to scrape state campaign finance law data that isn't available from other sources
 
-## Things I am not:
-# A web developer
-  # But I will do my best to answer any web questions and/or Google them in tandem with you!
+## Things I am not!
+  # A web developer
+    # But I will do my best to answer any web questions and/or Google them in tandem with you!
 
 ## Some of my links:
 # https://github.com/aedobbyn
@@ -22,90 +24,106 @@
     # There's plenty of theory and weeds to get into here but I'll try to keep it applicable to things you'd want to do in R
 
 
-### What is web scraping?
+################
+### Web scraping
 
 # The goal of web scraping is to extract text, tables, urls, and other attributes from a website
   # This can be useful when we can't access the data source behind a given public website
 
-# We can use the code underlying a website to pull out only certain parts of the page we're interested in
+# We'll use the code underlying a website to pull out only certain parts of the page we're interested in
 
 
 ### Bit of HTML and CSS background
 
 # HTML (hypertext markup language) defines how the elements of a website are laid out 
   # It creates headers, paragraphs, tables, bullet points, etc.
+
 # CSS adds style
   # Size, color, font
+
 # JavaScript adds interactivity
   # What happens when you click a button, how a chart updates when you enter new data, etc.
 
-# These components of a website allow us to comb through and extract things based on those HTML tags, CSS classes and ids
+# These components of a website allow us extract things based on those HTML tags, CSS classes and ids
 
 # What do HTML tags, CSS classes and CSS IDs look like?
   # Check out `sample.html`
 
-# Besides these, we can use:
-
 # CSS selectors
   # A combination of different CSS classes and/or IDs that identify some elements on a page
+    # These often look like a combination of two CSS classes 
+      # e.g. `.js-commit-group-header .TimelineItem-body`
 
 # Full xpaths
-  # An indication from the DOM to tell you exactly where an element is in the HTML
+  # These use the DOM to give a path to the element
+    # They run through all the HTML tags until they get to the one you asked for
+      # e.g. `/html/body/div[4]/div/main/div[2]/div/div/div[2]/div[3]/div/div[1]/div/div[1]/div[11]/div/div[2]/div[1]/div[2]/div/div/div[2]/code/a`
 
 
 ### Tooling
 
 ## The Chrome DevTools Inspector
   # Either cmd + shift + I (ctrl on Windows) to pop open the inspector or right click on a particular part of the page
+    # Make sure you're in the Elements tab
   # To get the full xpath
     # Right click on the element -> Copy -> Copy full XPath
 
 ## SelectorGadget
-  # Great for geneating CSS selectors
+  # Great for generating CSS selectors
+  # You can read `rvest`'s `vignette("selectorgadget")` for more info
   # Anyone have a website they want to try this on?
+
 
 ### Politeness
 
-# There are several packages which make it easy to be "polite"
-# https://github.com/dmi3kno/polite
+# Websites are not designed to be scraped and often the owners/maintainers explicitly do not want it to be scraped by certain types or any types of bots
+  # You should check out the robots.txt at the root of whatever website you're scraping
+    # e.g. https://en.wikipedia.org/robots.txt
 
-# https://en.wikipedia.org/robots.txt
+# There are several packages which make it easy to be "polite" while scraping
+  # https://github.com/dmi3kno/polite
 
 # Another good idea is to put sleeps in any loops you're writing with `Sys.sleep`
+  # I usually do 0.5 seconds, 1 second, or something like `runif(n = 1, min = 0.5, max = 1.5)`
 
+
+################
 ### rvest
 
-# `rvest` is a tidyverse-adjacent package for web scraping
+# `rvest` is a tidyverse package for web scraping
 library(tidyverse)
 library(rvest)
 conflicted::conflict_prefer("filter", "dplyr")
 
 url <- "https://fivethirtyeight.com/"
 
-(xml <- 
+(html <- 
     url %>% 
     xml2::read_html()
 )
 
-class(xml)
+class(html)
 
-# xml by itself is not very useful to us
-str(xml)
+# html by itself is not very useful to us
+str(html)
 
 # This is where `rvest` comes in. 
 
-# There are two types of nodes you can supply to `rvest::html_nodes`: CSS selectors and xpaths.
-?rvest::html_nodes
+# We first want to tell `rvest` exactly what parts of the page to extract
+  # There are two types of "nodes" you can supply to `rvest::html_nodes`
+    # CSS selectors and xpaths
 
 # If we wanted to get all the links on this page, we would use the `a` tag which defines a hyperlink in HTML, e.g.
   # <a href="https://path_to_link.com/">display text</a>
-(nodes <- xml %>% 
-   rvest::html_nodes("a")
+(nodes <- html %>% 
+   rvest::html_nodes(css = "a")
 )
 
 class(nodes)
 
 # Or to get a specific link if we know its id, we could supply the id instead of simply `a` for all links
+
+## Text
 
 # Once we've gotten our nodes, we want to extract stuff out of them that will be useful for us in R
   # The most common way to do this is with `rvest::html_text` which takes that `xml_nodeset` and returns a character vector 
@@ -130,6 +148,8 @@ text[1:10]
 
 text[1:10] %>% 
   clean_html()
+
+## Tables
 
 # Probably the second most common use case is extracting tables, defined with the HTML table tag
 
@@ -160,6 +180,8 @@ tbl %>%
     description = Description
   )
 
+## Links
+
 # What if now we wanted all the links on this page? 
   # `rvest::html_text` would give us the text of the links
   # `rvest::html_attr` will give us attributes about the thing we're scraping
@@ -176,6 +198,12 @@ text <-
   rvest::html_nodes("a") %>% 
   rvest::html_text()
 
+# It's usually a good idea to make sure the lengths of these are the same
+identical(
+  length(links),
+  length(text)
+)
+
 link_tbl <- 
   tibble(
     text = text,
@@ -183,54 +211,87 @@ link_tbl <-
   ) 
 
 link_tbl %>% 
-  print(n = nrow(.))
+  print(n = 50)
 
-# Questions so far?
+## Other attributes
+# HTML attributes are anything inside an HTML tag of the form `key="value"`
+
+# For an `img` tag we could ask for the `src` attribute or anything else like height and width if they're set
+  # e.g. `<img src="pup.jpg" width="500" height="600">`
+
+# Inline CSS `style` attributes also count
+
+# We can get the locations of all the images on this page
+(imgs <- 
+  url %>% 
+  xml2::read_html() %>% 
+  rvest::html_nodes("img") %>% 
+  rvest::html_attr("src")
+)
+
+# We can append "https:" before each of these to get the url of the img
+(animation <- 
+  "http:" %>% 
+  str_c(
+    imgs %>% 
+      .[which(
+        str_detect(., "Mandelbrot")
+      )]
+  )
+)
+
+## Questions so far?
+
+## Anyone have a website the want to scrape using `rvest`?
 
 
+##############################
 ### Selenium
 
 # `rvest` is great and tidy but limited in that it really only works for static websites
 
-# Selenium allows you to pretend to be a human by doing things like clicking buttons, entering text, selecting from dropdowns, refreshing the page, etc.
-
-# Its main use case is automating testing of web applciations, but it's super useful for scraping websites dynamically
+# Selenium is a webdriver that allows you to pretend to be a human by doing things like clicking buttons, entering text, selecting from dropdowns, refreshing the page, etc.
+  
+# A webdriver is a web automation framework
+  # Its main use case is automating testing of web applications, but it's super useful for scraping websites dynamically
 
 # It'll work on a variety of different browsers. Today we'll be using Google Chrome.
+  # You can use "headless" browsers like PhantomJS but using Chrome allows us to see what's going on and click around ourselves
 
 # A word of caution: Selenium introduces more complexity into scraping
   # If I can, I always try and just use `rvest` for scraping projects because it's a lot less finicky
   # Something I always do first when deciding whether I need Selenium is have a look at the url; there, you might be able to find a base url attached to ids or names you can loop through 
 
-## Packages
-# RSelenium
-  # This rOpenSci [package](https://github.com/ropensci/RSelenium) provides the R bindings to the language-agnostic Selenium 2.0 Remote WebDriver
+################
+## Quick example that may or may not work: https://github.com/aedobbyn/foodpls
+  # This was a bot I wrote using only the tools I'll cover below
+  # It logs into Amazon and keeps refreshing an Amazon Fresh cart or a Whole foods cart until it can check out
+################
 
+## Packages
 # seleniumPipes
   # This [package](https://github.com/johndharrison/seleniumPipes) provides functions for interacting with Selenium in a pipe-friendly way
 
-# # Versions
-# Versions can be a source of friction when it comes to using Selenium
+## Versions
+# Versions can be a source of friction when it comes to using Selenium 
+# We're going to want to explicitly supply a version of `chromedriver`, which will allow us to use Selenium in Chrome
+  # This version of `chromedriver` should match the version of the Chrome application on your system
+
 # We'll use the `wdman` and `binman` packages to download and manage binaries
 
+# [wdman](https://github.com/ropensci/wdman) is a web driver management package which includes support for Chrome
 
-# In a terminal:
-# ```
-# brew cask install chromedriver
-# chromedriver --version
-# ```
-
-# [wdman](https://github.com/ropensci/wdman) is a web driver management package
-
-# This internal [`chrome_check` function](https://github.com/ropensci/wdman/blob/a65c4dad1078b1c35cc844ff921ae21858d6923f/R/chrome.R#L90) will compare the Chrome version on your machine with the chromedriver version you have installed (if any), and make to install a version of chromedriver that matches your version of Chrome
+# This internal [`chrome_check` function](https://github.com/ropensci/wdman/blob/a65c4dad1078b1c35cc844ff921ae21858d6923f/R/chrome.R#L90) will compare the Chrome version on your machine with the chromedriver version you have installed (if any)
+  # If there isn't a match, it will install a version of `chromedriver` that matches your version of Chrome
 wdman:::chrome_check(verbose = TRUE)
 
-# Let's check which versions of chromedriver we have
+# Let's check which versions of `chromedriver` we have
 (chromedriver_versions <- binman::list_versions(appname = "chromedriver") %>% 
   .[[1]]
 )
 
-# You might have multiple versions of chromedriver installed. In this case, it's important to identify which one matches the version of Chrome you have
+# You might have multiple versions of `chromedriver` installed
+  # In this case, it's important to identify which one matches the version of Chrome you have
 
 # Let's check our version of Chrome
 
@@ -258,21 +319,28 @@ cmd <- "/Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --versi
 url <- "https://en.wikipedia.org/wiki/Special:Random"
 
 # Ports
-  # Each IP address has multiple ports and uses these ports to communicate with other servers
+  # Each IP address has multiple ports and uses these ports to communicate with other servers (certain ports are reserved)
   # We'll want to chose a port that is free (doesn't have a service running there) on our server
     # In this case our server is localhost (127.0.0.1), a.k.a. your computer is running as your server
   # For now we'll do the default to `wdman::chrome`
-port <- 4568L 
+port <- 4567L 
 
-# First we'll start the Chrome driver
-wdman::chrome(
-  port = port,
-  version = version,
-  check = FALSE # We already know what our version is
+# First we'll boot up the Chrome driver
+(server <- wdman::chrome(
+    port = port,
+    version = version,
+    check = FALSE # We already know what our version is
+  )
 )
+
+class(server)
+
+# We can stop this server with the function defined in `server[["stop"]]`
+server[["stop"]]
 
 # And create a session object 
 # You can supply an IP address as the first argument, `remoteServerAddr`, if you want to run this on a different machine; the default is localhost
+# You can use the `extraCapabilities` argument to set a local download directory if you want to download files
 sess <- 
   seleniumPipes::remoteDr(
     browserName = "chrome", 
@@ -284,28 +352,63 @@ sess <-
 sess %>% 
   seleniumPipes::go(url)
 
+sess
+
 class(sess)
 
 # We'll keep using the same session object to interact with this page; we don't want to redefine it 
 
+# We can check that this port is in use with the `pingr` package
+pingr::ping_port("localhost", port)
+
 # To consolidate these steps, I usually write convenience wrappers around `seleniumPipes` functions, like
 
-start_session <- function(url, browser = "chrome", port = 4444L, version) {
+# It's a good idea to stop any sessions currently running
+end_session <- function() {
+  if (!exists("server")) {
+    return(invisible())
+  }
+  
+  server$stop()
+  
+  rm(server)
+}
+
+# This should free up our port
+end_session()
+# And `pingr::ping_port` should return all `NA`s
+pingr::ping_port("localhost", port)
+
+start_session <- function(url,
+                          browser = "chrome", 
+                          port = 4444L, 
+                          version, 
+                          extra_capabilities = list()) {
+  # End any existing sessions
+  end_session()
+  
+  # Pick a port that isn't in use yet
   if (port == 4444L) {
     while (any(!is.na(pingr::ping_port("localhost", port)))) {
       port <- port + 1
     }
   }
   
-  # Start chrome driver
-  wdman::chrome(
-        port = as.integer(port),
-        version = version,
-        check = FALSE
-      )
+  # Start chrome driver and assign the server object in the .GlobalEnv
+  server <<- 
+    wdman::chrome(
+      port = as.integer(port),
+      version = version,
+      check = FALSE
+    )
   
   # Create the driver object on localhost
-  seleniumPipes::remoteDr(browserName = "chrome", port = port, version = version) %>%
+  seleniumPipes::remoteDr(
+    browserName = "chrome", 
+    port = port, 
+    version = version,
+    extraCapabilities = extra_capabilities
+  ) %>%
     # Go to the url
     seleniumPipes::go(url)
 }
@@ -320,7 +423,10 @@ sess <- start_session(url, version = version)
 
 elem <- 
   sess %>% 
-  seleniumPipes::findElement(using = "class", value = "mw-wiki-logo")
+  seleniumPipes::findElement(
+    using = "class", 
+    value = "mw-wiki-logo"
+  )
 
 # Then we can click on the element
 elem %>% 
@@ -367,6 +473,7 @@ link_tbl <-
   ) 
 
 link_tbl %>% 
+  sample_n(30) %>% 
   print(n = nrow(.))
 
 # If we wanted to visit one of these links randomly, we could sample just suffix
@@ -375,8 +482,7 @@ random_link_tbl <-
   filter(
     str_detect(
       link, "^/wiki"
-    ) &
-      ! str_detect(link, ":")
+    )
   ) %>% 
   sample_n(1)
 
@@ -390,6 +496,10 @@ sess %>%
   seleniumPipes::go(new_link)
 
 # `seleniumPipes` has lots of useful functions like `back`, `refresh`, `getCurrentUrl`
+sess %>% 
+  seleniumPipes::back()
+sess %>% 
+  seleniumPipes::getCurrentUrl()
 
 # You can also execute JavaScript on the page with `executeScript`
 
@@ -410,6 +520,7 @@ sess %>%
 input_text <- function(sess, using, value, text, clear = TRUE) {
   element <- seleniumPipes::findElement(sess, using, value)
   
+  # Clear out text if it's in there
   if (clear) seleniumPipes::elementClear(element)
   
   seleniumPipes::elementSendKeys(element, text)
@@ -426,7 +537,7 @@ sess %>%
   input_text(
     using = "name",
     value = text_search_name,
-    text = "Hadley Wickham"
+    text = "Jenny Bryan"
   )
 
 # And hit enter by simulating pressing the enter key
@@ -522,6 +633,93 @@ sess %>%
 sess %>% 
   click("class", "eodSelect")
 
+# Now we can scrap the meat of this page
+sess %>% 
+  extract_html() %>% 
+  rvest::html_nodes(".col-xs-12.col-sm-3") %>% 
+  rvest::html_text() %>% 
+  clean_html()
 
-### Anyone have a website they want to scrape?
+
+### Anyone have a website they want to scrape using Selenium?
+
+### Downloading files
+# You can normally download files if you have their URL using `download.file`
+
+# For instance, the NY Times makes their covid data available on their GitHub:
+covid_url <- "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv"
+path <- here::here() %>% str_c("covid.csv")
+
+download.file(
+  url = covid_url,
+  destfile = path
+)
+
+readr::read_csv(path)
+
+# With Selenium, you can specify a download directory using the `extraCapabilities` argument to the `seleniumPipes::remoteDr` function
+
+# We've left this empty by default in `start_session`
+start_session
+
+# Let's see if we can download the Central Park Squirrel Census from data.gov
+
+url <- "https://catalog.data.gov/dataset"
+
+sess <- 
+  start_session(
+    url, 
+    version = version, 
+    # This is where we add the directory info
+    extra_capabilities = 
+      list(
+        chromeOptions = list(
+          prefs = list(
+            "download.default_directory" = dir
+          )
+        )
+      )
+  )
+
+# Search for "squirrel census" plus enter
+sess %>% 
+  input_text(
+    "id",
+    "search-big",
+    "squirrel census\uE007"
+  )
+
+sess %>% 
+  click(
+    "xpath",
+    # The first link to a CSV
+    "/html/body/div[2]/div/div[2]/div/section[1]/div[2]/ul/li[1]/div/ul/li[1]"
+  )
+
+# Let's see if it downloaded
+(fls <- fs::dir_ls(dir))
+
+(fl <- fls[fls %>% str_detect("Squirrel")])
+
+readr::read_csv(fl)
+
+
+### PDF extraction
+# This isn't strictly related to web scraping but someone did ask about it and it's something you often have to do in conjunction with scraping
+
+library(pdftools)
+
+path <- here::here("Classic French Recipes.pdf")
+
+raw <- pdftools::pdf_text(path)
+
+length(raw)
+
+raw[50]
+
+# Sometimes in contrast to what we wrote in `clean_html`, it's important to split on newlines instead of remove them
+raw[50] %>% 
+  str_split("\\n") %>% 
+  .[[1]]
+
 

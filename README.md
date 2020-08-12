@@ -9,8 +9,10 @@ Recommended packages from CRAN include:
 
 ```
 binman
+fs
 glue
 here
+pdftools
 rvest
 seleniumPipes
 tidyverse
