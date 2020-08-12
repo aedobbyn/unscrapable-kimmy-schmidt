@@ -262,24 +262,30 @@ link_tbl %>%
   # If I can, I always try and just use `rvest` for scraping projects because it's a lot less finicky
   # Something I always do first when deciding whether I need Selenium is have a look at the url; there, you might be able to find a base url attached to ids or names you can loop through 
 
+
 ################
 ## Quick example that may or may not work: https://github.com/aedobbyn/foodpls
   # This was a bot I wrote using only the tools I'll cover below
   # It logs into Amazon and keeps refreshing an Amazon Fresh cart or a Whole foods cart until it can check out
 ################
 
-## Packages
+
+## Tools
 # seleniumPipes
   # This [package](https://github.com/johndharrison/seleniumPipes) provides functions for interacting with Selenium in a pipe-friendly way
 
+# `chromedriver` is an executable that Selenium uses to control Chrome
+  # You can have multiple versions of `chromedriver` while only having one version of Chrome
+
 ## Versions
-# Versions can be a source of friction when it comes to using Selenium 
-# We're going to want to explicitly supply a version of `chromedriver`, which will allow us to use Selenium in Chrome
-  # This version of `chromedriver` should match the version of the Chrome application on your system
+# Versions can be a source of friction when it comes to using Chrome with Selenium 
 
-# We'll use the `wdman` and `binman` packages to download and manage binaries
+# We want to make sure that the version of `chromedriver` we're using matches our version of the Chrome application
 
-# [wdman](https://github.com/ropensci/wdman) is a web driver management package which includes support for Chrome
+# The `wdman` and `binman` packages help download and manage binaries
+  # [binman](https://github.com/ropensci/binman) stands for binary manager
+    # It helps manage downloading third-party binaries
+  # [wdman](https://github.com/ropensci/wdman) is a web driver management package which includes support for Chrome
 
 # This internal [`chrome_check` function](https://github.com/ropensci/wdman/blob/a65c4dad1078b1c35cc844ff921ae21858d6923f/R/chrome.R#L90) will compare the Chrome version on your machine with the chromedriver version you have installed (if any)
   # If there isn't a match, it will install a version of `chromedriver` that matches your version of Chrome
@@ -292,6 +298,7 @@ wdman:::chrome_check(verbose = TRUE)
 
 # You might have multiple versions of `chromedriver` installed
   # In this case, it's important to identify which one matches the version of Chrome you have
+  # This won't necessarily be the latest version, which is what `wdman::chrome` uses by default
 
 # Let's check our version of Chrome
 
@@ -325,6 +332,9 @@ url <- "https://en.wikipedia.org/wiki/Special:Random"
   # For now we'll do the default to `wdman::chrome`
 port <- 4567L 
 
+# Let's make sure nothing's running at this port
+pingr::ping_port("localhost", port)
+
 # First we'll boot up the Chrome driver
 (server <- wdman::chrome(
     port = port,
@@ -348,13 +358,14 @@ sess <-
     version = version
   )
 
-# Now we can go to our url
-sess %>% 
-  seleniumPipes::go(url)
-
+# Our "Remote Ip Address" is localhost at the port we specified
 sess
 
 class(sess)
+
+# Now we can go to our url
+sess %>% 
+  seleniumPipes::go(url)
 
 # We'll keep using the same session object to interact with this page; we don't want to redefine it 
 
@@ -369,6 +380,7 @@ end_session <- function() {
     return(invisible())
   }
   
+  # This was the function specified in server[["stop"]]
   server$stop()
   
   rm(server)
@@ -640,9 +652,6 @@ sess %>%
   rvest::html_text() %>% 
   clean_html()
 
-
-### Anyone have a website they want to scrape using Selenium?
-
 ### Downloading files
 # You can normally download files if you have their URL using `download.file`
 
@@ -704,7 +713,10 @@ sess %>%
 readr::read_csv(fl)
 
 
-### PDF extraction
+### Anyone have a website they want to scrape using Selenium?
+
+
+### (Time permitting) Quick PDF extraction
 # This isn't strictly related to web scraping but someone did ask about it and it's something you often have to do in conjunction with scraping
 
 library(pdftools)

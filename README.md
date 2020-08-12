@@ -13,6 +13,7 @@ fs
 glue
 here
 pdftools
+pingr
 rvest
 seleniumPipes
 tidyverse
