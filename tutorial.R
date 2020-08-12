@@ -52,12 +52,12 @@
 # CSS selectors
   # A combination of different CSS classes and/or IDs that identify some elements on a page
     # These often look like a combination of two CSS classes 
-      # e.g. `.js-commit-group-header .TimelineItem-body`
+      # e.g. `.redClass .bigClass`
 
 # Full xpaths
-  # These use the DOM to give a path to the element
-    # They run through all the HTML tags until they get to the one you asked for
-      # e.g. `/html/body/div[4]/div/main/div[2]/div/div/div[2]/div[3]/div/div[1]/div/div[1]/div[11]/div/div[2]/div[1]/div[2]/div/div/div[2]/code/a`
+  # These use the DOM (document object model) to give a path to the element
+    # They run through all the HTML tags until they get to the part of the page you want
+      # e.g. `/html/body/div/span[2]`
 
 
 ### Tooling
@@ -192,6 +192,8 @@ links <-
   rvest::html_nodes("a") %>% 
   rvest::html_attr("href")
 
+length(links)
+
 text <- 
   url %>% 
   xml2::read_html() %>% 
@@ -287,7 +289,15 @@ link_tbl %>%
     # It helps manage downloading third-party binaries
   # [wdman](https://github.com/ropensci/wdman) is a web driver management package which includes support for Chrome
 
-# This internal [`chrome_check` function](https://github.com/ropensci/wdman/blob/a65c4dad1078b1c35cc844ff921ae21858d6923f/R/chrome.R#L90) will compare the Chrome version on your machine with the chromedriver version you have installed (if any)
+# To start up chromedriver, we'd use the `wdman::chrome` function 
+?wdman::chrome
+  # `wdman::chrome` by default uses the latest version of `chromedriver` which may or may not match our version of Chrome
+
+# You might have multiple versions of `chromedriver` installed
+  # In this case, it's important to identify which one matches the version of Chrome you have
+  # This won't necessarily be the latest `chromedriver` version
+
+# This internal `wdman` function called [`chrome_check`](https://github.com/ropensci/wdman/blob/a65c4dad1078b1c35cc844ff921ae21858d6923f/R/chrome.R#L90) will compare the Chrome version on your machine with the `chromedriver` version you have installed (if any)
   # If there isn't a match, it will install a version of `chromedriver` that matches your version of Chrome
 wdman:::chrome_check(verbose = TRUE)
 
@@ -296,11 +306,7 @@ wdman:::chrome_check(verbose = TRUE)
   .[[1]]
 )
 
-# You might have multiple versions of `chromedriver` installed
-  # In this case, it's important to identify which one matches the version of Chrome you have
-  # This won't necessarily be the latest version, which is what `wdman::chrome` uses by default
-
-# Let's check our version of Chrome
+# And now let's check our version of the Chrome application to find a match
 
 # `system` is a way to use the terminal through R. (You can replace this with whatever the path to Chrome is on your computer.)
 
@@ -325,12 +331,17 @@ cmd <- "/Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --versi
 # A random Wikipedia page
 url <- "https://en.wikipedia.org/wiki/Special:Random"
 
+# Now we can start up `chromedriver` for real
+?wdman::chrome
+
+# We're running this locally, so our server is localhost (127.0.0.1)
+  # In other words, your computer is both your server and your client
+
 # Ports
   # Each IP address has multiple ports and uses these ports to communicate with other servers (certain ports are reserved)
   # We'll want to chose a port that is free (doesn't have a service running there) on our server
-    # In this case our server is localhost (127.0.0.1), a.k.a. your computer is running as your server
   # For now we'll do the default to `wdman::chrome`
-port <- 4567L 
+port <- 4567L
 
 # Let's make sure nothing's running at this port
 pingr::ping_port("localhost", port)
@@ -345,12 +356,16 @@ pingr::ping_port("localhost", port)
 
 class(server)
 
+# We can check that this port is in use with the `pingr` package
+pingr::ping_port("localhost", port)
+
 # We can stop this server with the function defined in `server[["stop"]]`
-server[["stop"]]
+server$stop
 
 # And create a session object 
-# You can supply an IP address as the first argument, `remoteServerAddr`, if you want to run this on a different machine; the default is localhost
-# You can use the `extraCapabilities` argument to set a local download directory if you want to download files
+?seleniumPipes::remoteDr
+  # You can supply an IP address as the first argument, `remoteServerAddr`, if you want to run this on a different machine; the default is localhost
+  # You can use the `extraCapabilities` argument to set a local download directory if you want to download files
 sess <- 
   seleniumPipes::remoteDr(
     browserName = "chrome", 
@@ -369,10 +384,12 @@ sess %>%
 
 # We'll keep using the same session object to interact with this page; we don't want to redefine it 
 
-# We can check that this port is in use with the `pingr` package
-pingr::ping_port("localhost", port)
+sess %>% 
+  seleniumPipes::go(url)
+sess %>% 
+  seleniumPipes::go(url)
 
-# To consolidate these steps, I usually write convenience wrappers around `seleniumPipes` functions, like
+# To consolidate these steps, I usually write convenience wrappers around `seleniumPipes` functions like `start_session` below
 
 # It's a good idea to stop any sessions currently running
 end_session <- function() {
@@ -402,18 +419,20 @@ start_session <- function(url,
   # Pick a port that isn't in use yet
   if (port == 4444L) {
     while (any(!is.na(pingr::ping_port("localhost", port)))) {
-      port <- port + 1
+      port <- port + 1L
     }
   }
   
+  # (Step 1)
   # Start chrome driver and assign the server object in the .GlobalEnv
   server <<- 
     wdman::chrome(
-      port = as.integer(port),
+      port = port,
       version = version,
       check = FALSE
     )
   
+  # (Step 2)
   # Create the driver object on localhost
   seleniumPipes::remoteDr(
     browserName = "chrome", 
@@ -421,6 +440,7 @@ start_session <- function(url,
     version = version,
     extraCapabilities = extra_capabilities
   ) %>%
+    # (Step 3)
     # Go to the url
     seleniumPipes::go(url)
 }
@@ -428,7 +448,12 @@ start_session <- function(url,
 # This `start_session` returns the session object
 sess <- start_session(url, version = version)
 
-# To click on an element, we first need to identify it with `seleniumPipes::findElement` 
+
+## Clicking on stuff
+
+# To click on an element, we first need to identify it with `seleniumPipes::findElement`
+?seleniumPipes::findElement
+
   # The things that identify an element are its ID type with the `using` argument which can be one of
     # c("xpath", "css selector", "id", "name", "tag name", "class name", "link text", "partial link text")
   # and the unique id or `value` pertaining to that ID type
@@ -439,6 +464,8 @@ elem <-
     using = "class", 
     value = "mw-wiki-logo"
   )
+
+elem
 
 # Then we can click on the element
 elem %>% 
@@ -451,7 +478,10 @@ click <- function(sess, using, value) {
 }
 
 sess %>% 
-  click("tag name", "img")
+  click(
+    using = "tag name", 
+    value = "img"
+  )
 
 # You can do everything with Selenium that you could with `rvest`
 
@@ -489,7 +519,7 @@ link_tbl %>%
   print(n = nrow(.))
 
 # If we wanted to visit one of these links randomly, we could sample just suffix
-random_link_tbl <- 
+(random_link_tbl <- 
   link_tbl %>% 
   filter(
     str_detect(
@@ -497,6 +527,7 @@ random_link_tbl <-
     )
   ) %>% 
   sample_n(1)
+)
 
 # Generate the new link
 (new_link <- glue::glue("https://en.wikipedia.org{random_link_tbl$link}"))
@@ -549,7 +580,7 @@ sess %>%
   input_text(
     using = "name",
     value = text_search_name,
-    text = "Jenny Bryan"
+    text = "The Simpsons"
   )
 
 # And hit enter by simulating pressing the enter key
@@ -645,19 +676,20 @@ sess %>%
 sess %>% 
   click("class", "eodSelect")
 
-# Now we can scrap the meat of this page
+# Now we can scrape the meat of this page
 sess %>% 
   extract_html() %>% 
   rvest::html_nodes(".col-xs-12.col-sm-3") %>% 
   rvest::html_text() %>% 
   clean_html()
 
+
 ### Downloading files
 # You can normally download files if you have their URL using `download.file`
 
 # For instance, the NY Times makes their covid data available on their GitHub:
 covid_url <- "https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv"
-path <- here::here() %>% str_c("covid.csv")
+(path <- here::here() %>% str_c("/covid.csv"))
 
 download.file(
   url = covid_url,
@@ -674,6 +706,8 @@ start_session
 # Let's see if we can download the Central Park Squirrel Census from data.gov
 
 url <- "https://catalog.data.gov/dataset"
+
+(dir <- here::here())
 
 sess <- 
   start_session(
@@ -717,11 +751,11 @@ readr::read_csv(fl)
 
 
 ### (Time permitting) Quick PDF extraction
-# This isn't strictly related to web scraping but someone did ask about it and it's something you often have to do in conjunction with scraping
+# This isn't strictly related to web scraping but someone did ask about it and it's something you might have to do in conjunction with scraping
 
 library(pdftools)
 
-path <- here::here("Classic French Recipes.pdf")
+(path <- here::here("Classic French Recipes.pdf"))
 
 raw <- pdftools::pdf_text(path)
 
@@ -734,4 +768,6 @@ raw[50] %>%
   str_split("\\n") %>% 
   .[[1]]
 
+
+### Any q's?
 
