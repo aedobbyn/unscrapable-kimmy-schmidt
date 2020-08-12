@@ -1,14 +1,16 @@
+###################################################
 ###### Web scraping with rvest and Selenium! ###### 
+###################################################
 
 ### Intro
 
 ## Things I am:
   # I'm a data engineer at a small progressive company called [Deck](https://www.deck.tools/)
-    # I use web scraping tools primarily to scrape state campaign finance law data that isn't available from other sources
+    # Among other data eng things, I use web scraping tools primarily to scrape state campaign finance law data that isn't available from other sources
 
-## Things I am not:
-# A web developer
-  # But I will do my best to answer any web questions and/or Google them in tandem with you!
+## Things I am not!
+  # A web developer
+    # But I will do my best to answer any web questions and/or Google them in tandem with you!
 
 ## Some of my links:
 # https://github.com/aedobbyn
@@ -22,35 +24,40 @@
     # There's plenty of theory and weeds to get into here but I'll try to keep it applicable to things you'd want to do in R
 
 
-### What is web scraping?
+################
+### Web scraping
 
 # The goal of web scraping is to extract text, tables, urls, and other attributes from a website
   # This can be useful when we can't access the data source behind a given public website
 
-# We can use the code underlying a website to pull out only certain parts of the page we're interested in
+# We'll use the code underlying a website to pull out only certain parts of the page we're interested in
 
 
 ### Bit of HTML and CSS background
 
 # HTML (hypertext markup language) defines how the elements of a website are laid out 
   # It creates headers, paragraphs, tables, bullet points, etc.
+
 # CSS adds style
   # Size, color, font
+
 # JavaScript adds interactivity
   # What happens when you click a button, how a chart updates when you enter new data, etc.
 
-# These components of a website allow us to comb through and extract things based on those HTML tags, CSS classes and ids
+# These components of a website allow us extract things based on those HTML tags, CSS classes and ids
 
 # What do HTML tags, CSS classes and CSS IDs look like?
   # Check out `sample.html`
 
-# Besides these, we can use:
-
 # CSS selectors
   # A combination of different CSS classes and/or IDs that identify some elements on a page
+    # These often look like a combination of two CSS classes 
+      # e.g. `.js-commit-group-header .TimelineItem-body`
 
 # Full xpaths
-  # An indication from the DOM to tell you exactly where an element is in the HTML
+  # These use the DOM to give a path to the element
+    # They run through all the HTML tags until they get to the one you asked for
+      # e.g. `/html/body/div[4]/div/main/div[2]/div/div/div[2]/div[3]/div/div[1]/div/div[1]/div[11]/div/div[2]/div[1]/div[2]/div/div/div[2]/code/a`
 
 
 ### Tooling
@@ -63,20 +70,27 @@
 
 ## SelectorGadget
   # Great for generating CSS selectors
+  # You can read `rvest`'s `vignette("selectorgadget")` for more info
   # Anyone have a website they want to try this on?
+
 
 ### Politeness
 
-# There are several packages which make it easy to be "polite"
-# https://github.com/dmi3kno/polite
+# Websites are not designed to be scraped and often the owners/maintainers explicitly do not want it to be scraped by certain types or any types of bots
+  # You should check out the robots.txt at the root of whatever website you're scraping
+    # e.g. https://en.wikipedia.org/robots.txt
 
-# https://en.wikipedia.org/robots.txt
+# There are several packages which make it easy to be "polite" while scraping
+  # https://github.com/dmi3kno/polite
 
 # Another good idea is to put sleeps in any loops you're writing with `Sys.sleep`
+  # I usually do 0.5 seconds, 1 second, or something like `runif(n = 1, min = 0.5, max = 1.5)`
 
+
+################
 ### rvest
 
-# `rvest` is a tidyverse-adjacent package for web scraping
+# `rvest` is a tidyverse package for web scraping
 library(tidyverse)
 library(rvest)
 conflicted::conflict_prefer("filter", "dplyr")
@@ -95,7 +109,9 @@ str(html)
 
 # This is where `rvest` comes in. 
 
-# There are two types of nodes you can supply to `rvest::html_nodes`: CSS selectors and xpaths.
+# We first want to tell `rvest` exactly what parts of the page to extract
+  # There are two types of "nodes" you can supply to `rvest::html_nodes`
+    # CSS selectors and xpaths
 
 # If we wanted to get all the links on this page, we would use the `a` tag which defines a hyperlink in HTML, e.g.
   # <a href="https://path_to_link.com/">display text</a>
@@ -106,6 +122,8 @@ str(html)
 class(nodes)
 
 # Or to get a specific link if we know its id, we could supply the id instead of simply `a` for all links
+
+## Text
 
 # Once we've gotten our nodes, we want to extract stuff out of them that will be useful for us in R
   # The most common way to do this is with `rvest::html_text` which takes that `xml_nodeset` and returns a character vector 
@@ -130,6 +148,8 @@ text[1:10]
 
 text[1:10] %>% 
   clean_html()
+
+## Tables
 
 # Probably the second most common use case is extracting tables, defined with the HTML table tag
 
@@ -159,6 +179,8 @@ tbl %>%
     date = lubridate::as_date(Date),
     description = Description
   )
+
+## Links
 
 # What if now we wanted all the links on this page? 
   # `rvest::html_text` would give us the text of the links
@@ -196,24 +218,30 @@ link_tbl %>%
 ## Anyone have a website the want to scrape using `rvest`?
 
 
+##############################
 ### Selenium
 
 # `rvest` is great and tidy but limited in that it really only works for static websites
 
-# Selenium allows you to pretend to be a human by doing things like clicking buttons, entering text, selecting from dropdowns, refreshing the page, etc.
-
-# Its main use case is automating testing of web applications, but it's super useful for scraping websites dynamically
+# Selenium is a webdriver that allows you to pretend to be a human by doing things like clicking buttons, entering text, selecting from dropdowns, refreshing the page, etc.
+  
+# A webdriver is a web automation framework
+  # Its main use case is automating testing of web applications, but it's super useful for scraping websites dynamically
 
 # It'll work on a variety of different browsers. Today we'll be using Google Chrome.
+  # You can use "headless" browsers like PhantomJS but using Chrome allows us to see what's going on and click around ourselves
 
 # A word of caution: Selenium introduces more complexity into scraping
   # If I can, I always try and just use `rvest` for scraping projects because it's a lot less finicky
   # Something I always do first when deciding whether I need Selenium is have a look at the url; there, you might be able to find a base url attached to ids or names you can loop through 
 
-## Packages
-# RSelenium
-  # This rOpenSci [package](https://github.com/ropensci/RSelenium) provides the R bindings to the language-agnostic Selenium 2.0 Remote WebDriver
+################
+## Quick example that may or may not work: https://github.com/aedobbyn/foodpls
+  # This was a bot I wrote using only the tools I'll cover below
+  # It logs into Amazon and keeps refreshing an Amazon Fresh cart or a Whole foods cart until it can check out
+################
 
+## Packages
 # seleniumPipes
   # This [package](https://github.com/johndharrison/seleniumPipes) provides functions for interacting with Selenium in a pipe-friendly way
 
@@ -264,7 +292,7 @@ cmd <- "/Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --versi
 url <- "https://en.wikipedia.org/wiki/Special:Random"
 
 # Ports
-  # Each IP address has multiple ports and uses these ports to communicate with other servers
+  # Each IP address has multiple ports and uses these ports to communicate with other servers (certain ports are reserved)
   # We'll want to chose a port that is free (doesn't have a service running there) on our server
     # In this case our server is localhost (127.0.0.1), a.k.a. your computer is running as your server
   # For now we'll do the default to `wdman::chrome`
@@ -280,7 +308,7 @@ port <- 4567L
 
 class(server)
 
-# We can stop this server with the function in `server[["stop"]]`
+# We can stop this server with the function defined in `server[["stop"]]`
 server[["stop"]]
 
 # And create a session object 
@@ -581,3 +609,4 @@ sess %>%
 
 ### Anyone have a website they want to scrape using Selenium?
 
+### We can check out the quarantine project [`foodpls`](https://github.com/aedobbyn/foodpls)
