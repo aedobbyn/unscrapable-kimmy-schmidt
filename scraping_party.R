@@ -368,7 +368,7 @@ url <- "https://en.wikipedia.org/wiki/Special:Random"
   # Each IP address has multiple ports and uses these ports to communicate with other servers (certain ports are reserved)
   # We'll want to chose a port that is free (doesn't have a service running there) on our server
   # For now we'll check if the default to `wdman::chrome` is free
-port <- 4568L
+port <- 4567L
 
 # Let's make sure nothing's running at this port
 pingr::ping_port("localhost", port)
