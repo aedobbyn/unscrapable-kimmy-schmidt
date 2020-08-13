@@ -272,6 +272,13 @@ link_tbl %>%
 
 ## Anyone have a website the want to scrape using `rvest`?
 
+url <- "https://fivethirtyeight.com/features/how-fivethirtyeights-2020-presidential-forecast-works-and-whats-different-because-of-covid-19/"
+
+url %>% 
+  xml2::read_html() %>% 
+  rvest::html_nodes("li") %>% 
+  rvest::html_text()
+
 
 ##############################
 ### Selenium
@@ -361,7 +368,7 @@ url <- "https://en.wikipedia.org/wiki/Special:Random"
   # Each IP address has multiple ports and uses these ports to communicate with other servers (certain ports are reserved)
   # We'll want to chose a port that is free (doesn't have a service running there) on our server
   # For now we'll check if the default to `wdman::chrome` is free
-port <- 4567L
+port <- 4568L
 
 # Let's make sure nothing's running at this port
 pingr::ping_port("localhost", port)
@@ -790,3 +797,48 @@ raw[50] %>%
 
 
 ### Any q's?
+
+url <- "https://www.bankofengland.co.uk/news/speeches"
+
+sess <- start_session(url, version = version)
+
+using <- "class"
+value <- "pagination-pages"
+
+n_pages <- 
+  sess %>% 
+  extract_html() %>% 
+  html_nodes(".pagination-pages") %>% 
+  rvest::html_text() %>% 
+  str_remove("Page [0-9]+ of ") %>% 
+  as.integer()
+
+sess %>% 
+  click(
+    using = "class",
+    value = "pagination-next"
+  )
+
+grab_all_speeches <- function(sess, n) {
+  out <- c()
+  
+  for (i in seq(n)) {
+    # do the stuff
+    this <- "foo"
+    
+    message(glue::glue("Moving to page {i}."))
+    
+    sess %>% 
+      click(
+        using = "class",
+        value = "pagination-next"
+      )
+    
+    out <- c(out, this)
+  }
+  out
+}
+
+grab_all_speeches(sess, n = n_pages)
+
+
