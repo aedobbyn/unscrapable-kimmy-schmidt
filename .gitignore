@@ -3,5 +3,5 @@
 .RData
 .Ruserdata
 *.png
-*.pdf
 *.csv
+.DS_Store
