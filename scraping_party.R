@@ -798,6 +798,10 @@ raw[50] %>%
 
 ### Any q's?
 
+###### In-session participant examples:
+
+### Bank of England Speeches
+
 url <- "https://www.bankofengland.co.uk/news/speeches"
 
 sess <- start_session(url, version = version)
@@ -840,5 +844,64 @@ grab_all_speeches <- function(sess, n) {
 }
 
 grab_all_speeches(sess, n = n_pages)
+
+
+#### Nephrology
+
+url <- "https://apps.acgme.org/ads/Public/Programs/Search"
+
+sess <- start_session(url, version = version)
+
+dropdown_xpath <- "/html/body/div[2]/div/div[2]/div[1]/div/div[4]/div/div[1]/form/select[2]"
+
+option_n <- 41
+
+sess %>% 
+  click(
+    using = "id",
+    value = "#s2id_specialtyFilter b"
+  )
+
+sess %>% 
+  click(
+    using = "xpath",
+    value = "/html/body/div[8]/ul/li[1]/div"
+  )
+
+sess %>% 
+  dropdown_select(
+    dropdown_xpath,
+    41
+  )
+
+
+### Postgrados
+
+url <- "http://appcmi.ces.gob.ec/oferta_vigente/maestrias/postgrados.php"
+
+sess <- start_session(url, version = version)
+
+sess %>% 
+  click(
+    "class",
+    "btn btn-primary"
+  )
+
+sess %>% 
+  extract_html() %>% 
+  rvest::html_nodes("table") %>% 
+  rvest::html_table(fill = TRUE) %>% 
+  .[[1]] %>% 
+  as_tibble()
+
+
+
+
+
+
+
+
+
+
 
 
