@@ -1,81 +1,81 @@
 <html>
 
-<head>
-
-<title>My title</title>
-
-<!-- This CSS will often be in its own .css stylesheet file -->
-<style>
-
-body {
-  background-color: yellow;
-  color: blue;
-  font-family: "Comic Sans MS"
-}
-
-h1 {
-  background-color: teal;
-  color: white;
-  font-family: "Helvetica"
-}
-
-h1:hover {
-	color: orange;
-}
-
-/* 
-In a CSS file, classes start with "."s.
-They're good for applying the same styling multiple places.
-*/
-.redClass {
-  color: red;
-}
-
-.bigClass {
-  font-size: 1.5em
-}
-
-/* 
-And IDs begin with "#"s 
-They're good for uniquely identifying one element.
-*/
-#myId {
-  color: green;
-}
-
-</style>
-</head>
-
-<body>
-
-<br><br>
-
-<h1>This is a header</h1>
-
-<div> 
-  And here is <a href="https://rstats.ai/">a link</a>
-
-  and some text <b>which can be <em>styled</em></b> by 
+  <head>
   
-  <span class="redClass">
-    CSS classes as well as 
-      <span id="myId"> by specific IDs. </span> 
+    <title>My title</title>
+    
+    <!-- This CSS will often be in its own .css stylesheet file -->
+    <style>
+    
+    body {
+      background-color: yellow;
+      color: blue;
+      font-family: "Comic Sans MS"
+    }
+    
+    h1 {
+      background-color: teal;
+      color: white;
+      font-family: "Helvetica"
+    }
+    
+    h1:hover {
+    	color: orange;
+    }
+    
+    /* 
+    In a CSS file, classes start with "."s.
+    They're good for applying the same styling multiple places.
+    */
+    .redClass {
+      color: red;
+    }
+    
+    .bigClass {
+      font-size: 1.5em
+    }
+    
+    /* 
+    And IDs begin with "#"s 
+    They're good for uniquely identifying one element.
+    */
+    #myId {
+      color: green;
+    }
+    
+    </style>
+  </head>
   
-    <p> Classes are good for applying the same style mutliple places. </p>
-  </span>
+  <body>
   
-  <span class="redClass bigClass">
-    And they can be combined. 
-  </span>
+    <br><br>
+    
+    <h1>This is a header</h1>
+    
+    <div> 
+      And here is <a href="https://rstats.ai/">a link</a>
+    
+      and some text <b>which can be <em>styled</em></b> by 
+      
+      <span class="redClass">
+        CSS classes as well as 
+          <span id="myId"> by specific IDs. </span> 
+      
+        <p> Classes are good for applying the same style mutliple places. </p>
+      </span>
+      
+      <span class="redClass bigClass">
+        And they can be combined. 
+      </span>
+      
+      <br><br><br>
+      
+      <!-- This has some inline CSS -->
+      <p style="color:purple;">Now here's a dog:</p>
+      
+      <img src="doggo.jpeg" alt="doggo">
+    
+    </div>
   
-  <br><br><br>
-  
-  <!-- This has some inline CSS -->
-  <p style="color:purple;">Now here's a dog:</p>
-  
-  <img src="doggo.jpeg" alt="doggo">
-
-</div>
-
-</body>
+  </body>
 </html>

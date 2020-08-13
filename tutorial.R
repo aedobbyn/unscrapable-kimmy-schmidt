@@ -6,7 +6,7 @@
 
 ## Things I am:
   # I'm a data engineer at a small progressive company called [Deck](https://www.deck.tools/)
-    # Among other data eng things, I use web scraping tools primarily to scrape state campaign finance law data that isn't available from other sources
+    # Among other data eng things, I use web scraping tools primarily to scrape state campaign finance law and election voting law data that isn't available from other sources
 
 ## Things I am not!
   # A web developer
@@ -31,6 +31,21 @@
   # This can be useful when we can't access the data source behind a given public website
 
 # We'll use the code underlying a website to pull out only certain parts of the page we're interested in
+  # Specifically, we'll rely on the the structure and specificity that HTML and CSS afford to grab only the parts of a website we want
+
+
+### Politeness
+
+# Websites are usually not built to be scraped, and often the owners/maintainers explicitly do not want them to be scraped, especially by bots
+  # You should check out the robots.txt at the root of whatever website you're scraping to make sure what you want to do is condoned by the maintainer
+    # e.g. https://en.wikipedia.org/robots.txt
+
+# There is a comprehensive R package which make it easy to be "polite" while scraping (https://github.com/dmi3kno/polite) which we won't get into today
+
+# It's always a good idea is to put sleeps in any loops you're writing to the same domain many times
+  # You can do this with `Sys.sleep`
+    # I usually do 0.5 seconds, 1 second, or something like `runif(n = 1, min = 0.5, max = 1.5)` between every iteration
+  # If you don't sleep enough your IP might be blocked for some amount of time (a 429 error)
 
 
 ### Bit of HTML and CSS background
@@ -42,53 +57,50 @@
   # Size, color, font
 
 # JavaScript adds interactivity
-  # What happens when you click a button, how a chart updates when you enter new data, etc.
+  # Controls interactivity
+    # What happens when you click a button, how a list changes when you sort it, how a chart updates when you enter new data, etc.
 
-# These components of a website allow us extract things based on those HTML tags, CSS classes and ids
+# HTML and CSS provide wrappers around elements on a page
+  # These wrappers are composed of tags, classes, ids, and names
+  # We can use these opening and closing boundaries when we want to pull only certain from a website contained within those boundaries
 
 # What do HTML tags, CSS classes and CSS IDs look like?
   # Check out `sample.html`
 
+# Rather than just using standalone tags, classes, ids, etc. we can build them up in combination with each other to identify even more specific elements 
+
 # CSS selectors
   # A combination of different CSS classes and/or IDs that identify some elements on a page
-    # These often look like a combination of two CSS classes 
+    # These often look like a combination of two CSS classes
       # e.g. `.redClass .bigClass`
 
 # Full xpaths
-  # These use the DOM (document object model) to give a path to the element
+  # These use the DOM (document object model) to give a nested path to the element
     # They run through all the HTML tags until they get to the part of the page you want
       # e.g. `/html/body/div/span[2]`
 
 
 ### Tooling
 
+# There are a couple tools to use in the browser that make it easier to generate selectors and xpaths:
+
+## SelectorGadget
+# Great for generating CSS selectors
+  # You can read `rvest`'s `vignette("selectorgadget")` for more info
+  # Anyone have a website they want to try this out on?
+
 ## The Chrome DevTools Inspector
+  # Like right click + View Page Source but 1000x better
   # Either cmd + shift + I (ctrl on Windows) to pop open the inspector or right click on a particular part of the page
     # Make sure you're in the Elements tab
   # To get the full xpath
     # Right click on the element -> Copy -> Copy full XPath
 
-## SelectorGadget
-  # Great for generating CSS selectors
-  # You can read `rvest`'s `vignette("selectorgadget")` for more info
-  # Anyone have a website they want to try this on?
-
-
-### Politeness
-
-# Websites are not designed to be scraped and often the owners/maintainers explicitly do not want it to be scraped by certain types or any types of bots
-  # You should check out the robots.txt at the root of whatever website you're scraping
-    # e.g. https://en.wikipedia.org/robots.txt
-
-# There are several packages which make it easy to be "polite" while scraping
-  # https://github.com/dmi3kno/polite
-
-# Another good idea is to put sleeps in any loops you're writing with `Sys.sleep`
-  # I usually do 0.5 seconds, 1 second, or something like `runif(n = 1, min = 0.5, max = 1.5)`
-
 
 ################
 ### rvest
+
+# Now to actually start scraping
 
 # `rvest` is a tidyverse package for web scraping
 library(tidyverse)
@@ -97,6 +109,7 @@ conflicted::conflict_prefer("filter", "dplyr")
 
 url <- "https://fivethirtyeight.com/"
 
+# Read in the HTML document as an object
 (html <- 
     url %>% 
     xml2::read_html()
@@ -104,7 +117,7 @@ url <- "https://fivethirtyeight.com/"
 
 class(html)
 
-# html by itself is not very useful to us
+# This HTML object by itself is not very useful to us
 str(html)
 
 # This is where `rvest` comes in. 
@@ -112,27 +125,25 @@ str(html)
 # We first want to tell `rvest` exactly what parts of the page to extract
   # There are two types of "nodes" you can supply to `rvest::html_nodes`
     # CSS selectors and xpaths
+?rvest::html_nodes
 
 # If we wanted to get all the links on this page, we would use the `a` tag which defines a hyperlink in HTML, e.g.
   # <a href="https://path_to_link.com/">display text</a>
+
 (nodes <- html %>% 
    rvest::html_nodes(css = "a")
 )
 
 class(nodes)
 
-# Or to get a specific link if we know its id, we could supply the id instead of simply `a` for all links
-
 ## Text
 
 # Once we've gotten our nodes, we want to extract stuff out of them that will be useful for us in R
-  # The most common way to do this is with `rvest::html_text` which takes that `xml_nodeset` and returns a character vector 
+  # `rvest::html_text` which takes that `xml_nodeset` and returns a character vector of the text displayed from those links
 
 (text <- nodes %>% 
    rvest::html_text()
 )
-
-# In this case, what is returned is the `display text` of the link
 
 # I often write a helper like
 
@@ -148,6 +159,7 @@ text[1:10]
 
 text[1:10] %>% 
   clean_html()
+
 
 ## Tables
 
@@ -182,9 +194,12 @@ tbl %>%
 
 ## Links
 
-# What if now we wanted all the links on this page? 
-  # `rvest::html_text` would give us the text of the links
-  # `rvest::html_attr` will give us attributes about the thing we're scraping
+# What if now we wanted the urls of all the links on this page? 
+  # `rvest::html_text` gives us the text of the links but not their urls
+  # `rvest::html_attr` will give us attributes about the thing we're scraping 
+    # One of these attributes is "href"
+
+# It can be useful to make a key-value tibble between the text of the link and its url
 
 links <- 
   url %>% 
@@ -215,6 +230,7 @@ link_tbl <-
 link_tbl %>% 
   print(n = 50)
 
+
 ## Other attributes
 # HTML attributes are anything inside an HTML tag of the form `key="value"`
 
@@ -231,7 +247,7 @@ link_tbl %>%
   rvest::html_attr("src")
 )
 
-# We can append "https:" before each of these to get the url of the img
+# We can append "https:" before each of these to get the full url of the img
 (animation <- 
   "http:" %>% 
   str_c(
@@ -250,48 +266,50 @@ link_tbl %>%
 ##############################
 ### Selenium
 
-# `rvest` is great and tidy but limited in that it really only works for static websites
+# `rvest` is great at what it does but limited in that it really only works for static websites
+  # If you want to be able to scrape a site whose url doesn't change when it's in different states you're interested in, Selenium is your best bet
 
 # Selenium is a webdriver that allows you to pretend to be a human by doing things like clicking buttons, entering text, selecting from dropdowns, refreshing the page, etc.
   
 # A webdriver is a web automation framework
-  # Its main use case is automating testing of web applications, but it's super useful for scraping websites dynamically
+  # Selenium's main use case is automating testing of web applications, but it's super useful for scraping websites dynamically
 
 # It'll work on a variety of different browsers. Today we'll be using Google Chrome.
   # You can use "headless" browsers like PhantomJS but using Chrome allows us to see what's going on and click around ourselves
 
 # A word of caution: Selenium introduces more complexity into scraping
   # If I can, I always try and just use `rvest` for scraping projects because it's a lot less finicky
-  # Something I always do first when deciding whether I need Selenium is have a look at the url; there, you might be able to find a base url attached to ids or names you can loop through 
+  # Something I always do first when deciding whether I need Selenium is have a look at what happens to the url when I make changes I'm interested in
+  # If you select something from a dropdown and the url reflects a different id or a name, you might be able to find a way to loop construct a vector of urls and only scrape them using `rvest` (this is the dream)
 
 
 ################
 ## Quick example that may or may not work: https://github.com/aedobbyn/foodpls
   # This was a bot I wrote using only the tools I'll cover below
   # It logs into Amazon and keeps refreshing an Amazon Fresh cart or a Whole foods cart until it can check out
+    # This is big covid mood
 ################
 
 
 ## Tools
-# seleniumPipes
+# `seleniumPipes`
   # This [package](https://github.com/johndharrison/seleniumPipes) provides functions for interacting with Selenium in a pipe-friendly way
 
 # `chromedriver` is an executable that Selenium uses to control Chrome
-  # You can have multiple versions of `chromedriver` while only having one version of Chrome
+  # You can have multiple versions of `chromedriver` while only having one version of Chrome (!)
 
 ## Versions
 # Versions can be a source of friction when it comes to using Chrome with Selenium 
 
 # We want to make sure that the version of `chromedriver` we're using matches our version of the Chrome application
 
-# The `wdman` and `binman` packages help download and manage binaries
+# Two more helper packages for downloading/managing binaries: 
   # [binman](https://github.com/ropensci/binman) stands for binary manager
-    # It helps manage downloading third-party binaries
   # [wdman](https://github.com/ropensci/wdman) is a web driver management package which includes support for Chrome
 
-# To start up chromedriver, we'd use the `wdman::chrome` function 
+# To start up `chromedriver`, we'd use the `wdman::chrome` function 
 ?wdman::chrome
-  # `wdman::chrome` by default uses the latest version of `chromedriver` which may or may not match our version of Chrome
+  # `wdman::chrome` by default downloads and uses the latest version of `chromedriver` which may or may not match our version of Chrome
 
 # You might have multiple versions of `chromedriver` installed
   # In this case, it's important to identify which one matches the version of Chrome you have
@@ -341,7 +359,7 @@ url <- "https://en.wikipedia.org/wiki/Special:Random"
   # Each IP address has multiple ports and uses these ports to communicate with other servers (certain ports are reserved)
   # We'll want to chose a port that is free (doesn't have a service running there) on our server
   # For now we'll do the default to `wdman::chrome`
-port <- 4567L
+port <- 4568L
 
 # Let's make sure nothing's running at this port
 pingr::ping_port("localhost", port)
